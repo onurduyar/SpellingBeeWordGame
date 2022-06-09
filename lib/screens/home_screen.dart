@@ -1,7 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:polygon_clipper/polygon_clipper.dart';
+import 'package:wordgame_app/screens/game_screen.dart';
 import 'package:wordgame_app/txt_parser.dart';
+import 'package:wordgame_app/widgets/letter_collection.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -11,97 +12,69 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  late Future<List<String>> letterFuture;
+  late List<String> letters;
+  void returnLetter() async {
+    letters = await letterFuture;
+  }
+
   @override
   void initState() {
-    Future.delayed(const Duration(milliseconds: 300));
+    letterFuture = findRandomSevenLetters();
+    returnLetter();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final double sz = mediaQuery.size.height * 0.12;
-    final double dist = sz * 0.5;
-    return FutureBuilder(
-        future: findRandomSevenLetters(),
-        builder: (BuildContext context, AsyncSnapshot snapshot) {
-          if (snapshot.connectionState == ConnectionState.done &&
-              snapshot.hasData) {
-            return SafeArea(
-              child: Scaffold(
-                  body: Column(
+    return SafeArea(
+      child: Scaffold(
+        body: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder(
+                future: letterFuture,
+                builder: (context, snapshot) {
+                  if (!(snapshot.hasData &&
+                      snapshot.connectionState == ConnectionState.done)) {
+                    return const CircularProgressIndicator();
+                  }
+                  return LetterCollection(
+                    letters: snapshot.data as List<String>,
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              height: mediaQuery.size.height * 0.2,
+              child: Column(
                 children: [
-                  Container(
-                    height: sz * 6,
-                    width: double.infinity,
-                    color: Colors.green,
-                    child: Stack(
-                      alignment: const Alignment(0, 0),
-                      children: [
-                        Positioned(
-                            top: 0.5 * dist, child: _button(snapshot.data[1])),
-                        Positioned(
-                            top: 1.5 * dist,
-                            child: _buttonRow(
-                                snapshot.data[2] + snapshot.data[3])),
-                        Positioned(
-                            top: 2.5 * dist,
-                            child: _button(snapshot.data[0], center: true)),
-                        Positioned(
-                            top: 3.5 * dist,
-                            child: _buttonRow(
-                                snapshot.data[4] + snapshot.data[5])),
-                        Positioned(
-                            top: 4.5 * dist, child: _button(snapshot.data[6])),
-                      ],
-                    ),
-                  ),
                   ElevatedButton(
-                    onPressed: () {
-                      setState(() {});
+                    onPressed: () async {
+                      setState(() {
+                        letterFuture = findRandomSevenLetters();
+                      });
+                      letters = await letterFuture;
                     },
                     child: const Text('Reset and load new board'),
                   ),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) {
+                          return GameScreen(letters: letters);
+                        },
+                      ));
+                    },
                     child: const Text('PLAY'),
                   ),
                 ],
-              )),
-            );
-          }
-          return const Scaffold(body: CircularProgressIndicator());
-        });
-  }
-
-  Widget _button(String letter, {bool center = false}) {
-    return Padding(
-      padding: const EdgeInsets.all(40),
-      child: SizedBox(
-        height: 80,
-        child: ClipPolygon(
-          sides: 6,
-          borderRadius: 1,
-          rotate: 90.0,
-          child: Container(
-            alignment: Alignment.center,
-            color: !center ? Colors.blueGrey : Colors.amber,
-            width: 100,
-            height: 100,
-            child: Text(
-              letter,
-              style: const TextStyle(color: Colors.white, fontSize: 40),
+              ),
             ),
-          ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buttonRow(String chars) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: chars.split("").map((e) => _button(e)).toList(),
     );
   }
 
@@ -115,7 +88,7 @@ class _HomePageState extends State<HomePage> {
       'E',
       'F',
       'G',
-      'ğ',
+      'Ğ',
       'H',
       'İ',
       'I',
@@ -165,17 +138,17 @@ class _HomePageState extends State<HomePage> {
     });
     return letters;
   }
-}
 
-Future<List<String>> _getData() async {
-  const String path = 'assets/sozluk_v2.txt';
-  List<String> wordList = await TxtParser.loadFile(path);
-  List<String> seven = [];
+  Future<List<String>> _getData() async {
+    const String path = 'assets/sozluk_v2.txt';
+    List<String> wordList = await TxtParser.loadFile(path);
+    List<String> seven = [];
 
-  for (var element in wordList) {
-    if (element.length == 7) {
-      seven.add(element);
+    for (var element in wordList) {
+      if (element.length == 7) {
+        seven.add(element);
+      }
     }
+    return seven;
   }
-  return seven;
 }
